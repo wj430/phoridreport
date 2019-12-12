@@ -1,0 +1,169 @@
+---
+title: "Phorid Lab"
+output:
+  bookdown:: pdf_document
+    
+bibliography: /Users/will/Documents/projects/phoridreport/PhoridReport.bib
+csl: /Users/will/Documents/projects/phoridreport/ecology.csl
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r include=FALSE}
+library(tidyverse)
+library(cowplot)
+library(ggforce)
+library(stargazer)
+theme_set(theme_cowplot())
+
+raw_data = read_csv("/Users/will/Documents/projects/phoridreport/phorid_data.csv") %>% 
+  filter(Time_period != "30")
+
+baseline_values = raw_data %>%
+  filter(Time_period %>% str_detect("Baseline"),
+         phorids_present == FALSE) %>% 
+  select(Team, Treatment, N_ants) %>% 
+  group_by(Team, Treatment) %>% 
+  summarize(mean_baseline = mean(N_ants))
+
+
+data_with_baseline = raw_data %>% 
+  left_join(baseline_values, 
+            by = c("Team", "Treatment"))
+
+std_data = data_with_baseline %>% 
+  mutate(ants_change = (N_ants - mean_baseline)/mean_baseline,
+         arena = paste(Team, Treatment),
+         Time_period = Time_period %>% 
+           str_replace("Baseline", "Base.") %>% 
+           fct_inorder, 
+         phorids_present = if_else(phorids_present==TRUE,
+                           "Phorids", "No Phorids"))
+```
+
+**Abstract**
+
+Though phorid flies have been used as a biocontrol of *Solenopsis invicta* in America for over two decades, the mechanism by which phorid flies decrease the abundance of red imported fire ants colonies is still under study. This experiment tests the hypothesis that phorid flies disrupt the rate of foraging in red imported fire ants, while also investigating the effects of temperature and relative humidity. No effect of the presence of phorid flies was found on the rate of fire ant foraging, but several confounding factors call this result into question. A direct relationship was found between foraging and temperature, while there was a negative relationship between foraging and relative humidity . 
+
+
+**Introduction**
+
+Red imported fire ants (*Solenopsis invicta*) were first introduced into the United States in the early 1900s. Since then, they have spread across the southern United States, devastating local populations of ants wherever they become established. They have experienced a relatively greater success in North America than in their indigenous South American habitat, achieving an abundance five to ten times that in their homeland. This has been partially explained with the Enemy Release Hypothesis [@porterIntercontinentalDifferencesAbundance1997], which states that invasive species are able to outcompete their native counterparts because they lack specialized predators and pathogens. *Solenopsis invicta* decapitating phorid flies (*Pseudacteon tricuspis* and *P. curvatus*) were released in the US in 1997 and 2000 as a biocontrol agent and have since been established across much of the range of the invasive fire ants. 
+
+There are several mechanisms by which it has been suggested that these phorid flies may curb fire ant populations: direct predation of individuals, the interruption of foraging patterns, and the transmission of pathogens between colonies [@callcottFireAntDecapitating2011]. This project tested the hypothesis that the presence of phorid flies will disrupt the foraging patterns of *Solenopsis invicta*. Based on the results of @porterForagingSolenopsisInvicta1987, I predict that relative humidity will vary independently of foraging patterns, while temperature will have a significant effect. Because temperature should have a parabolic response on fire ant foraging, the directionality of this effect will depend on the ambient temperature during testing. 
+
+
+
+**Methods and Materials**
+
+This experiment was undertaken at Brackenridge Field Lab, immediately adjacent to the main building. All tests occurred on the grass cover that is typical of this area. Both sites that were primarily shaded and unshaded were selected, and sites in close proximity with similar conditions were paired together, one as the "control" site and the other "experimental". All sites were prepared for experimentation with a hotdog piece on a note card, a transparent cover for each site, and a HOBO temperature tracker under the cover. These covers allowed the passage of ants, but prevented phorid flies from attacking the ants while they consumed the hotdog. 
+
+After allowing time for the ants to discover the hotdogs and establish foraging trails, the sites were uncovered to allow phorids to begin preying on the ants. These phorids were then captured using a specialized device that was composed of clear vinyl tubing with a small capsule at the end which had shear fabric on one side and a removable lid on the other. Phorid flies were sucked into the opened capsule, which was then closed and saved for later use. 
+
+In the first three rounds of testing, a baseline was established for all sites. All tests with the paired experimental and control sites occurred concurrently and lasted for a duration of two minutes. During the baseline tests, a handheld counter was used to count all ants that left the card to establish the rate of foraging without phorid fly intrusion. Following these tests, phorid flies were introduced into the experimental sites. Five minutes after the first phorid fly attack was witnessed, five more rounds of testing were conducted for all sites, with a three minute interval between tests. The last round of tests occurred 25 minutes after the first phorid fly attack. 
+
+The data that was produced was analyzed for a difference between the experimental and control groups, as well as the overall effect of environmental variables temperature and relative humidity.
+
+To test for the effect of the presence of a phorid fly on the ants feeding patterns, a Welch's T test was performed with treatment group as the explanatory variable. 
+
+To test the environmental variables, the data were first separated into phorid fly and non phorid fly groups. For both groups, linear models were created with temperature and relative humidity as the explanatory variable and number of ants as the dependent variable. 
+
+**Results**
+
+There is not an obviously discernible pattern that separates the experimental group from the control group. Neither seems to trend towards greater or fewer ants during the duration of the test, but the range from the greatest to the least "Change in Ants" value is maximized at fifteen minutes. The results of a t test (p-value = 0.55) agree with the visual observation: there is not a clear difference between the two test groups.
+
+
+```{r echo=FALSE, fig.width=10}
+std_data %>% 
+  ggplot(aes(x = Time_period, y = ants_change, 
+             group = arena,
+             color = Treatment)) +
+  geom_hline(yintercept = 0, color = "grey", linetype =2) +
+  geom_link2() + 
+  ggtitle("Change in Ants at Each Test Site")+
+  ylab("Change in Ants ") + 
+  xlab("Baseline Values and Five Minute Test Intervals") +
+  scale_color_manual(
+   name = "Treatment Group",
+    labels = c("Control", "Experimental"),
+    values = c("blue", "orange"))
+```
+```{r echo=FALSE, fig.width=10}
+std_data %>% 
+  ggplot(aes(x = Time_period, y = ants_change, 
+             fill = Treatment)) +
+  geom_hline(yintercept = 0, color = "grey", linetype =2) +
+  geom_violin() + 
+  ggtitle("Distribution of Change in Ants for All Test Intervals")+
+  ylab("Change in Ants") + 
+  xlab("Baseline Values and Five Minute Test Intervals") +
+  scale_fill_manual(
+    name = "Treatment Group",
+    labels = c("Control", "Experimental"),
+    values = c("blue", "orange"))
+```
+
+
+```{r include=FALSE}
+t.test(ants_change ~ Treatment, 
+       data = std_data %>% filter(Time_period == "Base. 1") ) 
+```
+
+When linear regressions were performed, a significant effect was found for both environmental variables in both treatment groups on the number of ants. The tests indicated that there is an overall positive relationship between temperature and the number of ants present, while there is an overall inverse relationship between relative humidity and the number of ants present.
+
+```{r echo=FALSE, fig.width=10}
+std_data %>% 
+  ggplot(aes(x = temperature, y = N_ants, 
+             color = phorids_present)) +
+  geom_smooth(method = "lm", se = FALSE) + # regression line
+  geom_point()+
+  xlab("Temperature (degrees C)")+ylab("Number of Ants")+labs(color="Phorid Presence")
+
+std_data %>% # replace x = temperature with rel_humidity
+  ggplot(aes(x = rel_humidity, y = N_ants, 
+             color = phorids_present)) +
+  geom_smooth(method = "lm", se = FALSE) + # regression line
+  geom_point()+
+  xlab("Relative Humidity (%)")+ylab("Number of Ants")+labs(color="Phorid Presence")
+```
+
+```{r echo=FALSE}
+temp_phorid_reg = 
+  lm(N_ants~temperature, 
+   data = std_data %>% filter(phorids_present == "Phorids"))
+relhumid_phorid_reg = 
+  lm(N_ants~rel_humidity,
+   data = std_data %>% filter(phorids_present == "Phorids"))
+temp_nophorid_reg = 
+  lm(N_ants~temperature, 
+   data = std_data %>% filter(phorids_present == "No Phorids"))
+relhumid_nophorid_reg = 
+  lm(N_ants~rel_humidity, 
+   data = std_data %>% filter(phorids_present == "No Phorids"))
+
+```
+```{r echo=FALSE}
+stargazer(temp_phorid_reg,relhumid_phorid_reg,temp_nophorid_reg,relhumid_nophorid_reg, type="text",
+          dep.var.labels = "Number of Ants",
+          column.labels = c("Phorids Present","Phorids Present", "Phorids Absent","Phorids Absent"),
+          covariate.labels = c("Temperature (degrees C)","Relative Humidity (%)", "Intercept"))
+
+```
+
+**Discussion**
+
+The results of this experiment disagree with the original hypothesis regarding the effects of phorid flies on fire ant foraging. While the results of this experiment suggest that foraging varies independently of the presence of phorid flies, this result was surprising, given previous studies which have indicated that foraging ants will abandon food resources when under attack from phorid flies [@orrFliesSuppressFire1995]. Although the species of phorid flies used in testing was not recorded, this difference may be partially explained by differences in ant response to *P. curvatus* and *P. tricuspis*-- *P. curvatus* having less potent impact on fire ant behavior [@wuellnerPhoridFlyDiptera2002]. The experiment should be repeated using a greater sample size and with a recording of the phorid fly species used in each test to more precisely determine if there is an effect of phorid flies on fire ant foraging. While the original methodology of the experiment indicated that the phorid fly species should be recorded, not all testers were able to identify the difference between the species. This study was also not blind, which may have altered the way that testers interacted with control and experimental sites. 
+
+It is important to investigate these findings further, because they contradict fairly well accepted principles about the effect of phorid flies on fire ant foraging. It is highly possible that this experiment lacked the power to detect the effect. It is also generally accepted that direct mortality is not the primary motive force that suppresses ant abundance in areas with phorid flies, but it results from the change in foraging strategies. It is for this reason that phorid flies may be considered parasitoids of individual ants, resulting in their death, but parasites of the ant colony. They impose negative effects, but are unlikely to cause mortality to the colony itself. Rather, they restrict the worker ants ability to collect food, which they bring back to feed the queens, larvae, and other ants. It is possible that the food shortage may result in greater larval mortality or a reduced capacity for queens to produce eggs in the same large numbers. 
+
+The results of the experimented also contradicted the prediction regarding the effect of relative humidity. While this disagrees with findings from @porterForagingSolenopsisInvicta1987, which suggest relative humidity is unrelated to foraging, it could be that this effect is an ecoregion or haplotype specific response. It would be worthwhile to conduct a more in depth study into this response with a model that factors in interaction between temperature and relative humidity. It may be that at higher temperatures, a higher relative humidity would be more favorable to the ants, as it would help prevent desiccation. 
+
+The results of this experiment agreed with the hypothesis that temperature has a significant effect on foraging. It is perhaps surprising that at such high temperatures, further increase would result in higher rates of foraging. @vogtEffectsTemperatureSeason2003 found that rates of foraging were maximized at a soil surface temperature around 28 degrees C, but this experiment differs in that it was measuring ambient temperature at ground level. This experiment should be repeated on hotter days, to determine what temperatures will begin to inhibit fire ant foraging. 
+
+
+
+**Citations**
+
